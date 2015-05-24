@@ -1,0 +1,59 @@
+---
+title: "Error Prediction in Weight Lifting Exercises"
+author: "Matti Salimi"
+date: "Sunday, May 24, 2015"
+output: html_document
+---
+
+## Introduction
+Research in the area of Human Activity Recognition is advancing. Using wearable devices with accelerometers that track movement, it is possible to collect data on weight lifting exercises. This data can potentially be used in sports training applications to determine whether such exercises are being performed in a correct manner.
+
+Data has been made available at http://groupware.les.inf.puc-rio.br/har that was collected from accelerometers worn by subjects while performing perform bicep curls with a light dumbbell. The participants were instructed to perform a bicep curl correctly and incorrectly in 5 different manners.
+
+The aim of this project is to build a predictive model that can classify in which of the 5 manners the subjects did the exercise. The data was analysed with a random forest algorithm, resulting in a model with 99% accuracy.
+
+## Setting up the Data
+The Weight Lifting Exercises Dataset was downloaded from the website. No additional preprocessing is necessary at this point.
+
+```{r}
+library(caret)
+library(randomForest)
+training = read.csv("pml-training.csv", header = TRUE, na.strings = c("NA", ""), stringsAsFactors = T)
+```
+
+## Data analysis
+In order to achieve faster model building, the dataset is trimmed down to the bare essentials:
+
+1.  Keep predictors that have no missing values
+2.  Discard predictors that have no variance
+3.  Discard columns 1 through 6 (containing only identification data) 
+
+```{r}
+keep <- colSums(is.na(training)) == 0; training <- training[,keep]
+discard <- nearZeroVar(training); training <- training[,-discard]
+training <- training[,-(1:6)] 
+dim(training)
+```
+
+The dataset has been reduced to 53 variables and can now be used to build a predictive model by means of the random forests algorithm. A seed has been set, in the interest of reproducibility.
+
+```{r, cache=TRUE}
+set.seed(1234)
+model <- randomForest(classe ~ ., data = training, ntree = 512)
+model
+```
+
+In random forests, there is no need for cross-validation or a separate test set to get an unbiased estimate of the test set error. The out-of-bag error estimate is as accurate as using a test set of the same size as the training set.
+
+The summary of the fitted model shows an out-of-bag error rate of 0.32%. As shown, out of 19,622 data points, only 63 of them were not correctly identified.
+
+```{r}
+testing = read.csv("pml-testing.csv", header = TRUE, na.strings = c("NA", ""), stringsAsFactors = T)
+prediction <- predict(model, testing)
+answers <- as.character(prediction) #answers submitted in the course submission web page
+```
+
+The model was used to predict 20 different test cases in a test set, and all were correctly indentified.
+
+## Conclusion
+By using a random forest model on the variables given, it's been found that one can expect near a 99% accuracy rate for estimating new data collected through bicep curls.
